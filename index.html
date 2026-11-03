@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>온라인 오목</title>
+<meta name="description" content="링크 하나로 친구와 바로 두는 온라인 오목. 가입·설치 없음.">
+<meta name="theme-color" content="#2b2118">
+<meta property="og:type" content="website">
+<meta property="og:title" content="오목 한 판 두자! ⚫⚪">
+<meta property="og:description" content="링크를 누르면 바로 대국 시작 — 가입·설치 없음">
+<meta property="og:image" content="https://cheon-jaeryong.github.io/omok/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="style.css?v=1.0.0">
+</head>
+<body>
+
+<!-- ===== 로비 ===== -->
+<main id="lobby" class="lobby" hidden>
+  <div class="hero">
+    <img src="icon.svg" alt="" class="hero-logo" width="64" height="64">
+    <h1>친구랑 오목 한 판</h1>
+    <p>방을 만들고 링크를 보내면 끝. 서울이든 경기도든, 와이파이든 LTE든 어디서나 접속돼요.</p>
+  </div>
+
+  <section class="card">
+    <label class="field">
+      <span>내 이름</span>
+      <input id="lobbyName" maxlength="12" placeholder="예: 재룡" autocomplete="nickname">
+    </label>
+
+    <div class="field">
+      <span>규칙</span>
+      <div class="seg" id="ruleSeg" role="radiogroup">
+        <button type="button" data-v="normal" class="on">일반 룰</button>
+        <button type="button" data-v="free">자유 룰</button>
+      </div>
+      <small id="ruleHelp" class="help">3·3 금지(흑·백 모두), 6목 이상은 승리 아님</small>
+    </div>
+
+    <div class="field">
+      <span>내 돌</span>
+      <div class="seg" id="colorSeg" role="radiogroup">
+        <button type="button" data-v="B" class="on">⚫ 흑 (먼저)</button>
+        <button type="button" data-v="W">⚪ 백</button>
+        <button type="button" data-v="R">🎲 랜덤</button>
+      </div>
+    </div>
+
+    <button id="createBtn" class="btn primary big">방 만들고 친구 초대하기</button>
+  </section>
+
+  <section class="card slim">
+    <div class="field">
+      <span>초대받은 방 코드가 있나요?</span>
+      <div class="row">
+        <input id="joinCode" maxlength="12" placeholder="방 코드 6자리" autocapitalize="off" autocomplete="off" spellcheck="false">
+        <button id="joinBtn" class="btn">입장</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">가입·설치·결제 없음 · 대국 정보는 공개 중계 서버를 거쳐 전달돼요</p>
+</main>
+
+<!-- ===== 대국실 ===== -->
+<div id="room" class="room-shell" hidden>
+  <header class="top">
+    <a href="./" class="brand" id="homeLink" title="처음 화면(새 방 만들기)">
+      <img src="icon.svg" alt="" width="26" height="26"><b>오목</b>
+    </a>
+    <button class="chip" id="codeChip" title="초대 링크 복사">방 <b id="roomCode">------</b></button>
+    <span class="net" id="netBadge" title="중계 서버 연결 상태"><i></i><em>연결 중…</em></span>
+  </header>
+
+  <div class="room">
+    <section class="play">
+      <div class="players">
+        <div class="pcard" id="pB">
+          <div class="stone b"></div>
+          <div class="pinfo">
+            <div class="pname"><span class="nm">-</span><span class="me-tag" hidden>나</span></div>
+            <div class="pstat"><i class="dot"></i><span class="st">-</span></div>
+          </div>
+          <div class="pscore">0</div>
+          <button class="take" hidden>자리 이어받기</button>
+        </div>
+        <div class="vs">VS</div>
+        <div class="pcard" id="pW">
+          <div class="stone w"></div>
+          <div class="pinfo">
+            <div class="pname"><span class="nm">-</span><span class="me-tag" hidden>나</span></div>
+            <div class="pstat"><i class="dot"></i><span class="st">-</span></div>
+          </div>
+          <div class="pscore">0</div>
+          <button class="take" hidden>자리 이어받기</button>
+        </div>
+      </div>
+
+      <div class="status" id="status">방 정보를 불러오는 중…</div>
+
+      <div class="board-wrap" id="boardWrap">
+        <canvas id="board" aria-label="오목판"></canvas>
+
+        <div class="overlay" id="inviteOverlay" hidden>
+          <div class="invite">
+            <div class="invite-title">친구를 기다리는 중…</div>
+            <p>아래 링크를 카톡으로 보내 주세요.<br>친구가 들어오면 바로 시작해요.</p>
+            <div class="link-box" id="inviteLink">-</div>
+            <div class="row center">
+              <button class="btn primary" id="shareBtn">링크 보내기</button>
+              <button class="btn" id="copyBtn">링크 복사</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay result" id="resultOverlay" hidden>
+          <div class="result-card">
+            <div class="result-title" id="resultTitle">-</div>
+            <div class="result-sub" id="resultSub">-</div>
+            <div class="row center">
+              <button class="btn primary" id="rematchBtn2">한 판 더 (색 바꾸기)</button>
+              <button class="btn ghost" id="closeResultBtn">판 보기</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="banner" id="undoBanner" hidden>
+        <span id="undoText">-</span>
+        <span class="row">
+          <button class="btn small primary" id="undoAccept">수락</button>
+          <button class="btn small" id="undoDecline">거절</button>
+          <button class="btn small" id="undoCancel">요청 취소</button>
+        </span>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary place" id="placeBtn" hidden>✓ 여기에 두기</button>
+        <button class="btn" id="undoBtn">↶ 무르기 요청</button>
+        <button class="btn" id="resignBtn">🏳 기권</button>
+        <button class="btn primary" id="rematchBtn" hidden>한 판 더</button>
+        <span class="resign-confirm" id="resignConfirm" hidden>
+          정말 기권할까요?
+          <button class="btn small danger" id="resignYes">기권</button>
+          <button class="btn small" id="resignNo">취소</button>
+        </span>
+      </div>
+
+      <div class="toggles">
+        <button class="tgl" id="tSound" aria-pressed="true">🔊 소리</button>
+        <button class="tgl" id="tNum" aria-pressed="false"># 수순 번호</button>
+        <button class="tgl" id="tConfirm" aria-pressed="true" title="모바일에서 한 번 눌러 위치를 고르고, 한 번 더 눌러 둡니다">👆 터치 두 번에 두기</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel chat">
+        <div class="panel-h">채팅 <small id="watchers"></small></div>
+        <ol class="msgs" id="msgs"></ol>
+        <div class="quick" id="quick">
+          <button>👍</button><button>😂</button><button>😱</button><button>🤔</button>
+          <button>빨리 둬~</button><button>잘 뒀다!</button><button>한 판 더?</button>
+        </div>
+        <form class="row" id="chatForm" autocomplete="off">
+          <input id="chatInput" maxlength="120" placeholder="메시지 입력">
+          <button class="btn" type="submit">전송</button>
+        </form>
+      </section>
+      <section class="panel rules">
+        <div class="panel-h">규칙</div>
+        <p id="ruleText">-</p>
+        <p class="muted">흑이 먼저 둡니다. 판이 끝나면 “한 판 더”로 색을 바꿔 다시 둘 수 있어요. 새로고침하거나 잠깐 끊겨도 판은 그대로 이어져요.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- ===== 이름 입력(초대 링크로 처음 온 사람) ===== -->
+<div class="modal" id="nameModal" hidden>
+  <form class="card modal-card" id="nameForm">
+    <div class="invite-title" id="nameTitle">오목 초대가 왔어요!</div>
+    <p id="nameSub">이름을 적고 입장하세요.</p>
+    <input id="nameInput" maxlength="12" placeholder="내 이름" autocomplete="nickname">
+    <button class="btn primary big" type="submit">입장하기</button>
+  </form>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="vendor/mqtt.min.js"></script>
+<script src="rules.js?v=1.0.0"></script>
+<script src="app.js?v=1.0.0"></script>
+</body>
+</html>
