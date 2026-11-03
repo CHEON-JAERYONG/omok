@@ -39,6 +39,32 @@
   };
   function setName(n) { myName = n.trim().slice(0, 12); store.set('omok.name', myName); }
 
+  /* ================= 투명창 모드 =================
+     PC 도우미(glass/omok-glass.ps1)가 이 페이지를 '#glass'를 붙여 전용 창으로 엽니다.
+     브라우저는 자기 창을 투명하게 만들 수 없어서, 페이지는 창 제목 끝에 보이지 않는 글자(폭 0 문자)로
+     원하는 진하기·항상 위 값을 적어 두고, 도우미가 그 제목을 읽어 윈도우 창 투명도를 바꿉니다. */
+  var glass = { on: false, alpha: 70, top: true };
+  try {
+    if (location.hash === '#glass') {
+      sessionStorage.setItem('omok.glass', '1');
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    glass.on = sessionStorage.getItem('omok.glass') === '1';
+  } catch (e) { }
+  (function () {
+    var a = parseInt(store.get('omok.glassAlpha', '70'), 10);
+    glass.alpha = a >= 10 && a <= 100 ? a : 70;
+    glass.top = store.get('omok.glassTop', '1') === '1';
+  })();
+  var titleBase = document.title;
+  function glassTag() {
+    if (!glass.on) return '';
+    var v = (glass.alpha & 127) | (glass.top ? 128 : 0), s = '\u2060';
+    for (var i = 7; i >= 0; i--) s += (v >> i) & 1 ? '\u200C' : '\u200B';
+    return s + '\u2060';
+  }
+  function setTitle(t) { titleBase = t; document.title = t + glassTag(); }
+
   /* ================= 토스트 · 소리 ================= */
   var toastTimer = 0;
   function toast(msg, ms) {
@@ -57,6 +83,7 @@
   document.addEventListener('pointerdown', unlockAudio, { passive: true });
   function sound(kind) {
     if (!prefs.sound || !actx || actx.state !== 'running') return;
+    if (glass.on && document.hidden) return; // 투명창을 숨겨 둔 동안엔 소리도 내지 않음
     var t = actx.currentTime;
     if (kind === 'stone') {
       var len = Math.floor(actx.sampleRate * 0.05), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
@@ -113,13 +140,56 @@
       enterRoom(code, st);
     };
     function join() {
-      var code = cleanCode($('joinCode').value);
+      var raw = $('joinCode').value, m = String(raw).match(/[?&]r=([a-z0-9]+)/i);
+      var code = cleanCode(m ? m[1] : raw); // 초대 링크를 통째로 붙여 넣어도 됨
       if (code.length < 4) { toast('방 코드를 확인해 주세요'); return; }
       var name = $('lobbyName').value.trim(); if (name) setName(name);
       location.href = '?r=' + code;
     }
     $('joinBtn').onclick = join;
     $('joinCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') join(); });
+
+    if (glass.on) {
+      $('glassCard').hidden = false;
+      $('glassSlotLobby').appendChild($('glassCtl'));
+    } else if (/Windows/.test(navigator.userAgent) && !(window.matchMedia && matchMedia('(pointer: coarse)').matches)) {
+      $('glassPromo').hidden = false;
+      $('glassInfoBtn').onclick = function () { $('glassModal').hidden = false; };
+      $('glassModalClose').onclick = function () { $('glassModal').hidden = true; };
+      $('glassModal').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+    }
+  }
+
+  function bindGlass() {
+    if (!glass.on) return;
+    document.body.classList.add('glass-on');
+    var c = $('glassCtl'), r = $('glassRange'), v = $('glassVal'), p = $('glassPin');
+    c.hidden = false;
+    function show() {
+      r.value = glass.alpha; v.textContent = glass.alpha + '%';
+      p.setAttribute('aria-pressed', String(glass.top));
+      setTitle(titleBase);
+    }
+    function setAlpha(a) {
+      glass.alpha = Math.max(10, Math.min(100, Math.round(a / 5) * 5));
+      store.set('omok.glassAlpha', String(glass.alpha));
+      show();
+    }
+    r.addEventListener('input', function () { setAlpha(+r.value); });
+    c.addEventListener('wheel', function (e) { e.preventDefault(); setAlpha(glass.alpha + (e.deltaY < 0 ? 5 : -5)); }, { passive: false });
+    p.onclick = function () {
+      glass.top = !glass.top;
+      store.set('omok.glassTop', glass.top ? '1' : '0');
+      show();
+      toast(glass.top ? '📌 항상 위에 둬요' : '항상 위 해제');
+    };
+    show();
+    try {
+      if (!sessionStorage.getItem('omok.glassHint')) {
+        sessionStorage.setItem('omok.glassHint', '1');
+        setTimeout(function () { toast('투명창 모드 · Ctrl+Alt+H로 숨기기/보이기', 3800); }, 600);
+      }
+    } catch (e) { }
   }
 
   /* ================= 대국실 상태 ================= */
@@ -629,7 +699,7 @@
 
   function updateTitle() {
     var normal = '오목 · ' + room.toUpperCase();
-    document.title = (cur && document.hidden && canMove()) ? '● 내 차례! · 오목' : normal;
+    setTitle((cur && document.hidden && canMove()) ? '● 내 차례! · 오목' : normal);
   }
 
   function renderNameModal() {
@@ -780,6 +850,7 @@
     room = code; base = TOPIC_ROOT + room + '/';
     $('room').hidden = false;
     $('roomCode').textContent = room.toUpperCase();
+    if (glass.on) { $('glassSlotRoom').appendChild($('glassCtl')); $('glassCard').hidden = true; }
     joinedAt = Date.now();
     bindRoomUI();
     if (initial) applyState(initial, true);
@@ -798,4 +869,5 @@
   var code = cleanCode(params.get('r'));
   if (code.length >= 4) enterRoom(code, null);
   else showLobby();
+  bindGlass();
 })();

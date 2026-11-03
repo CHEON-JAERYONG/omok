@@ -230,3 +230,31 @@ input:focus { border-color: var(--accent); }
   animation: toastIn .18s ease-out;
 }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+/* ---------- 투명창 모드(PC 도우미와 함께) ---------- */
+.glass { display: inline-flex; align-items: center; gap: 6px; color: var(--ink2); font-size: 12.5px; }
+.glass-ico { flex: none; }
+.glass input[type="range"] { width: 92px; padding: 0; margin: 0; border: 0; background: transparent; accent-color: var(--accent); cursor: pointer; }
+.glass b { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
+.glass-pin {
+  border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 1px 5px; cursor: pointer; font-size: 13px;
+  filter: grayscale(1); opacity: .55;
+}
+.glass-pin[aria-pressed="true"] { background: var(--card); border-color: var(--ink2); filter: none; opacity: 1; }
+#glassSlotRoom:empty { display: none; }
+#glassSlotRoom { padding-left: 10px; border-left: 1px solid var(--line); }
+.glass-card { padding: 12px 14px; }
+.glass-card-h { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.glass-card-h small { font-weight: 500; color: var(--ink2); font-size: 12px; }
+.glass-card .glass input[type="range"] { flex: 1; width: auto; }
+.glass-card .glass { display: flex; }
+@media (max-width: 620px) {
+  body.glass-on .net em { display: none; }
+  body.glass-on .brand b { display: none; }
+}
+.linkish { border: 0; background: none; padding: 2px 4px; color: var(--ink2); font-size: 12.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.glass-info { text-align: left; }
+.glass-info .invite-title { text-align: center; }
+.glass-info ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.glass-info ol small { color: var(--ink2); }
+.glass-info a.btn { text-decoration: none; }
